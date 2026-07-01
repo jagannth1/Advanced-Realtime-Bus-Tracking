@@ -1,0 +1,105 @@
+<%
+const formatTime = (time) => {
+ if (!time) return 'N/A';
+ if (time instanceof Date) {
+return time.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+ }
+ const [sHours, minutes] = time.split(':');
+ const hours = parseInt(sHours, 10);
+ const ampm = hours >= 12 ? 'PM' : 'AM';
+ const twelveHour = hours % 12 || 12;
+ return `${twelveHour}:${minutes} ${ampm}`;
+};
+%>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>Tracking: <%= bus.busNumber %></title>
+ <link href="/css/style.css" rel="stylesheet">
+ <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+ <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+ <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+ <link rel="stylesheet" href="https://unpkg.com/leaflet.fullscreen@2.4.0/Control.FullScreen.css" />
+ <style>
+  html, body { height: 100%; overflow: hidden; font-family: 'Roboto', sans-serif; }
+  .stop-connector { position: absolute; left: 15px; top: 30px; width: 2px; height: calc(100% - 15px); background-color: #e5e7eb; transition: background-color 0.3s ease; }
+  .stop-dot { transition: all 0.3s ease; }
+  .stop-item.is-arrived .stop-dot { background-color: #10b981; border-color: #10b981; color: white; }
+  .stop-item.is-arrived .stop-connector { background-color: #10b981; }
+  @keyframes glow {
+ 0%, 100% { box-shadow: 0 0 8px 3px rgba(59, 130, 246, 0.4); }
+ 50% { box-shadow: 0 0 16px 6px rgba(59, 130, 246, 0.2); }
+  }
+  .stop-item.is-next .stop-dot { background-color: #3b82f6; border-color: #3b82f6; color: white; animation: glow 2s infinite; }
+  .leaflet-popup-content-wrapper { border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+  .leaflet-popup-content p { margin: 0; }
+  .leaflet-control-zoom, .leaflet-control-fullscreen a { border-radius: 8px !important; border: 1px solid #ccc !important; }
+    /* Style for the rotating bus icon */
+  .bus-icon-rotated { transition: transform 0.5s linear; /* Smooth rotation */ }
+ </style>
+</head>
+<body class="bg-gray-100 flex flex-col h-screen">
+ <nav class="bg-white shadow-lg z-20">
+  <div class="container mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
+ <a href="/" class="text-lg font-medium text-blue-600 hover:text-blue-800 transition-colors">&larr; All Routes</a>
+ <div class="text-center">
+  <h1 class="text-lg sm:text-xl font-bold text-gray-800">Bus: <%= bus.busNumber %></h1>
+  <p class="text-xs sm:text-sm text-gray-500"><%= bus.routeName %></p>
+ </div>
+ <div id="status-indicator" class="text-sm font-semibold text-red-600 bg-red-100 px-3 py-1.5 rounded-full whitespace-nowrap">OFFLINE</div>
+  </div>
+ </nav>
+
+ <div class="flex-grow flex flex-col lg:flex-row overflow-hidden">
+  <div id="map-container" class="relative w-full lg:w-2/3 h-1/2 lg:h-full shadow-lg z-10">
+ <div id="map" class="w-full h-full"></div>
+ <button id="recenter-btn" title="Center on Bus" class="hidden absolute bottom-20 lg:bottom-4 right-4 z-[1000] bg-white p-2.5 rounded-full shadow-lg hover:bg-gray-100 transition-transform active:scale-95">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 text-gray-700">
+ <path d="M12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75z" />
+ <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v.093c-2.834.223-5.132 2.521-5.355 5.355H6a.75.75 0 000 1.5h.093c.223 2.834 2.521 5.132 5.355 5.355v.093a.75.75 0 001.5 0v-.093c2.834-.223 5.132-2.521 5.355-5.355h.093a.75.75 0 000-1.5h-.093c-.223-2.834-2.521-5.132-5.355-5.355V6z" clip-rule="evenodd" />
+  </svg>
+ </button>
+  </div>
+  <div class="w-full lg:w-1/3 h-1/2 lg:h-full bg-white overflow-y-auto border-t lg:border-t-0 lg:border-l border-gray-200">
+ <div class="p-4 sticky top-0 bg-white border-b z-10">
+  <h2 class="text-xl font-bold text-gray-800">Route Stops</h2>
+ </div>
+ <div id="stop-list" class="relative p-4">
+  <% if (bus.stops.length > 0) { %>
+ <% bus.stops.forEach((stop, index) => { %>
+ <div class="stop-item relative pl-12 pb-8" data-stop-index="<%= index %>" data-stop-lat="<%= stop.lat %>" data-stop-lng="<%= stop.lng %>" data-scheduled-time="<%= stop.scheduledTime %>">
+  <% if (index < bus.stops.length - 1) { %><div class="stop-connector"></div><% } %>
+  <div class="stop-dot absolute left-0 top-0 w-[30px] h-[30px] rounded-full bg-white border-2 border-gray-300 flex items-center justify-center font-bold text-gray-500">
+ <%= index + 1 %>
+  </div>
+  <div class="ml-2">
+ <div class="flex items-baseline gap-3">
+  <p class="font-bold text-gray-800 text-lg"><%= stop.name %></p>
+  <span class="next-stop-label hidden text-xs font-bold text-white bg-blue-500 px-2 py-0.5 rounded-full">Next Stop</span>
+ </div>
+ <p class="text-sm text-gray-600">Scheduled: <span class="font-medium"><%= formatTime(stop.scheduledTime) %></span></p>
+ <p class="arrival-label text-sm text-green-600 font-bold hidden">Arrived: <span class="arrival-time"></span></p>
+ <p class="distance-label text-sm text-gray-500 font-medium hidden">Distance: <span class="distance-value font-bold"></span></p>
+ <p class="eta-label text-sm text-blue-600 font-bold hidden">ETA: <span class="eta-time"></span> <span class="text-gray-500 font-medium eta-relative"></span></p>
+                   <p class="delay-label text-sm font-semibold hidden">Status: <span class="delay-status "> </span></p>
+ </div>
+ </div>
+ <% }) %>
+  <% } else { %>
+ <p class="text-gray-500 px-4">No stops have been defined for this route.</p>
+  <% } %>
+ </div>
+  </div>
+ </div>
+
+ <script>const busData = <%- JSON.stringify(bus) %>;</script>
+ <script src="/socket.io/socket.io.js"></script>
+ <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+ <script src="https://unpkg.com/leaflet.fullscreen@2.4.0/Control.FullScreen.js"></script>
+ <script src="/js/tracker.js"></script>
+</body>
+</html>

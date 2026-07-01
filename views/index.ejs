@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Bus Tracker | Home</title>
+    <link href="/css/style.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-50 font-['Roboto',_sans-serif]">
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+            <a href="/" class="text-2xl font-bold text-blue-600">Where is my Bus? 🚌</a>
+            <div>
+                <% if (isAuthenticated) { %>
+                    <a href="/dashboard" class="text-gray-700 hover:text-blue-600 font-medium px-3 py-2">Dashboard</a>
+                    <form action="/auth/logout" method="POST" class="inline">
+                        <button type="submit" class="text-gray-700 hover:text-blue-600 font-medium px-3 py-2">Logout</button>
+                    </form>
+                <% } else { %>
+                    <a href="/auth/login" class="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">Driver Portal</a>
+                <% } %>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto p-4 md:p-6">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800">Live Bus Tracking</h1>
+            <p class="text-gray-500 mt-2">Select a route below to view the live location of the bus.</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <% if (buses.length > 0) { %>
+                <% buses.forEach(bus => { %>
+                    <a href="/track/<%= bus._id %>" class="group block bg-white rounded-lg border border-gray-200 hover:border-blue-500 hover:shadow-lg transition-all duration-300">
+                        <div class="p-5">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h2 class="text-xl font-bold text-gray-800 group-hover:text-blue-600"><%= bus.routeName %></h2>
+                                    <p class="text-sm text-gray-500">Bus No: <%= bus.busNumber %></p>
+                                </div>
+                                <% if (bus.trackingStarted) { %>
+                                    <span class="flex items-center text-sm font-semibold text-green-600 bg-green-100 px-3 py-1 rounded-full">
+                                        <span class="relative flex h-3 w-3 mr-2">
+                                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                          <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                                        </span>
+                                        LIVE
+                                    </span>
+                                <% } else { %>
+                                    <span class="text-sm font-semibold text-red-600 bg-red-100 px-3 py-1 rounded-full">OFFLINE</span>
+                                <% } %>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 px-5 py-3 border-t border-gray-200 text-right">
+                            <span class="text-blue-500 font-semibold text-sm">Track Bus &rarr;</span>
+                        </div>
+                    </a>
+                <% }) %>
+            <% } else { %>
+                <p class="text-center text-gray-500 col-span-full mt-10">No buses are currently configured. Please ask a driver to add bus details.</p>
+            <% } %>
+        </div>
+    </main>
+</body>
+</html>

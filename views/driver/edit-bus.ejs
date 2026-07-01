@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= bus ? 'Edit' : 'Add' %> Bus Details</title>
+    <link href="/css/style.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-['Roboto',_sans-serif]">
+    <nav class="bg-white shadow-md">
+        <div class="container mx-auto px-6 py-3 flex justify-between items-center">
+             <a href="/dashboard" class="text-lg font-medium text-blue-600">&larr; Back to Dashboard</a>
+            <div class="text-xl font-bold text-gray-800"><%= bus ? 'Edit' : 'Add' %> Bus Details</div>
+            <div></div> </div>
+    </nav>
+    
+    <main class="container mx-auto p-4 md:p-6">
+        <div class="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+            <form action="/dashboard/bus/edit" method="POST">
+                <div class="border-b border-gray-200 pb-6 mb-6">
+                    <h2 class="text-xl font-bold text-gray-800 mb-4">Bus Information</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="busNumber" class="block text-sm font-medium text-gray-700">Bus Number</label>
+                            <input type="text" id="busNumber" name="busNumber" value="<%= bus ? bus.busNumber : '' %>" class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                        <div>
+                            <label for="routeName" class="block text-sm font-medium text-gray-700">Route Name (e.g., Campus to City Center)</label>
+                            <input type="text" id="routeName" name="routeName" value="<%= bus ? bus.routeName : '' %>" class="mt-1 block w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">Route Stoppages</h2>
+                        <button type="button" id="add-stop-btn" class="bg-blue-500 text-white font-semibold px-5 py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                            + Add Stop
+                        </button>
+                    </div>
+                    <div id="stops-container" class="space-y-4">
+                        <% if (bus && bus.stops.length > 0) { %>
+                            <% bus.stops.forEach((stop, i) => { %>
+                                <div class="stop-entry grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-gray-50 p-3 rounded-lg border">
+                                    <div class="md:col-span-4"><input type="text" name="stops[<%= i %>][name]" placeholder="Stop Name" value="<%= stop.name %>" class="w-full p-2 border rounded" required></div>
+                                    <div class="md:col-span-2"><input type="number" step="any" name="stops[<%= i %>][lat]" placeholder="Latitude" value="<%= stop.lat %>" class="w-full p-2 border rounded" required></div>
+                                    <div class="md:col-span-2"><input type="number" step="any" name="stops[<%= i %>][lng]" placeholder="Longitude" value="<%= stop.lng %>" class="w-full p-2 border rounded" required></div>
+                                    <div class="md:col-span-3"><input type="time" name="stops[<%= i %>][scheduledTime]" value="<%= stop.scheduledTime %>" class="w-full p-2 border rounded" required></div>
+                                    <div class="md:col-span-1"><button type="button" class="remove-stop-btn w-full bg-red-500 text-white p-2 rounded hover:bg-red-600">X</button></div>
+                                </div>
+                            <% }) %>
+                        <% } %>
+                    </div>
+                </div>
+
+                <div class="mt-8 border-t border-gray-200 pt-6">
+                    <button type="submit" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold text-lg hover:bg-green-700 transition-colors">
+                        Save Bus & Route
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const stopsContainer = document.getElementById('stops-container');
+        const addStopBtn = document.getElementById('add-stop-btn');
+        let stopIndex = document.querySelectorAll('.stop-entry').length;
+
+        // Function to create a new stop input group
+        const createStopElement = (index) => {
+            const div = document.createElement('div');
+            div.className = 'stop-entry grid grid-cols-1 md:grid-cols-12 gap-3 items-center bg-gray-50 p-3 rounded-lg border animate-fade-in';
+            div.innerHTML = `
+                <div class="md:col-span-4"><input type="text" name="stops[${index}][name]" placeholder="Stop Name" class="w-full p-2 border rounded" required></div>
+                <div class="md:col-span-2"><input type="number" step="any" name="stops[${index}][lat]" placeholder="Latitude" class="w-full p-2 border rounded" required></div>
+                <div class="md:col-span-2"><input type="number" step="any" name="stops[${index}][lng]" placeholder="Longitude" class="w-full p-2 border rounded" required></div>
+                <div class="md:col-span-3"><input type="time" name="stops[${index}][scheduledTime]" class="w-full p-2 border rounded" required></div>
+                <div class="md:col-span-1"><button type="button" class="remove-stop-btn w-full bg-red-500 text-white p-2 rounded hover:bg-red-600">X</button></div>
+            `;
+            return div;
+        };
+        
+        // Re-index all stop entries after a removal
+        const reindexStops = () => {
+             const allStops = stopsContainer.querySelectorAll('.stop-entry');
+             allStops.forEach((stop, index) => {
+                 stop.querySelectorAll('input').forEach(input => {
+                     const name = input.getAttribute('name');
+                     if (name) {
+                         const newName = name.replace(/\[\d+\]/, `[${index}]`);
+                         input.setAttribute('name', newName);
+                     }
+                 });
+             });
+             stopIndex = allStops.length;
+        };
+
+        // Event listener for adding a new stop
+        addStopBtn.addEventListener('click', () => {
+            const newStop = createStopElement(stopIndex);
+            stopsContainer.appendChild(newStop);
+            stopIndex++;
+        });
+
+        // Event listener for removing a stop (using event delegation)
+        stopsContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-stop-btn')) {
+                e.target.closest('.stop-entry').remove();
+                reindexStops();
+            }
+        });
+    });
+    </script>
+    <style>
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fade-in 0.3s ease-out forwards;
+        }
+    </style>
+</body>
+</html>
